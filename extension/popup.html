@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Secure Password Manager</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Setup screen: shown only on first run -->
+    <div id="setupScreen" class="screen hidden">
+      <h2>Create Master Password</h2>
+      <input type="password" id="setupPassword" placeholder="Master password">
+      <button id="setupBtn">Create Vault</button>
+      <p id="setupError" class="error"></p>
+    </div>
+
+    <!-- Unlock screen -->
+    <div id="unlockScreen" class="screen hidden">
+      <h2>🔐 Secure Password Manager</h2>
+      <input type="password" id="unlockPassword" placeholder="Master password">
+      <button id="unlockBtn">Unlock Vault</button>
+      <p id="unlockError" class="error"></p>
+    </div>
+    <!-- Save password prompt: shown when a form submission is pending -->
+    <div id="savePromptScreen" class="screen hidden">
+      <h2>🔐 Save this password?</h2>
+      <p><strong>Website:</strong> <span id="promptWebsite"></span></p>
+      <p><strong>Username:</strong> <span id="promptUsername"></span></p>
+      <button id="savePasswordBtn">Save Password</button>
+      <button id="dontSaveBtn">Not Now</button>
+      <p id="saveError" class="error"></p>
+    </div>
+
+    <!-- Manual add credential screen -->
+    <div id="addScreen" class="screen hidden">
+      <h2>Add Password</h2>
+      <input type="text" id="addWebsite" placeholder="Website (e.g. codechef.com)">
+      <input type="text" id="addUsername" placeholder="Username or email">
+      <input type="password" id="addPassword" placeholder="Password">
+      <button id="saveNewBtn">Save</button>
+      <button id="cancelAddBtn">Cancel</button>
+      <p id="addError" class="error"></p>
+    </div>
+
+    <!-- Dashboard: shown after unlock -->
+    <div id="dashboardScreen" class="screen hidden">
+      <h2>🔐 Secure Password Manager</h2>
+      <p>Status: 🟢 Vault Unlocked</p>
+      <input type="text" id="searchInput" placeholder="🔍 Search passwords...">
+      <div id="credentialList"></div>
+      <button id="addBtn">+ Add Password</button>
+      <button id="generateBtn">Generate Password</button>
+      <button id="lockBtn">Lock Vault</button>
+    </div>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
