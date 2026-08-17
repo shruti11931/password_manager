@@ -26,7 +26,7 @@ document.addEventListener(
     if (!(form instanceof HTMLFormElement)) return;
 
     const passwordField = findPasswordField(form);
-    if (!passwordField || !passwordField.value) return; // no password submitted, nothing to offer // no password submitted, nothing to offer
+    if (!passwordField || !passwordField.value) return; // no password submitted, nothing to offer
 
     const usernameField = findUsernameField(form, passwordField);
     const username = usernameField ? usernameField.value : "";
@@ -45,6 +45,7 @@ document.addEventListener(
   },
   true // capture phase, so we see the submit before any page JS can prevent it
 );
+
 /**
  * Autofill: checks if a saved credential exists for this domain,
  * and if so, shows a small non-intrusive banner with an Autofill button.
@@ -55,18 +56,16 @@ function findLoginForm() {
   const forms = Array.from(document.forms).filter((f) =>
     f.querySelector('input[type="password"]')
   );
+
   if (forms.length === 0) return null;
   if (forms.length === 1) return forms[0];
 
-  // Multiple candidates (e.g. a signup form + a login form on the same page).
-  // Prefer one whose id/action/class hints at "login" over "register"/"signup".
   const loginHint = forms.find((f) => {
     const text = (f.id + " " + f.action + " " + f.className).toLowerCase();
     return text.includes("login") || text.includes("signin");
   });
   if (loginHint) return loginHint;
 
-  // Fallback: the form with the fewest input fields is usually the simpler login form.
   return forms.reduce((a, b) =>
     a.querySelectorAll("input").length <= b.querySelectorAll("input").length ? a : b
   );
@@ -118,10 +117,6 @@ function createAutofillBanner(website) {
   });
 }
 
-// Only offer autofill if a login form exists on this page.
-// Only offer autofill if a login form exists on this page.
-// Runs immediately if the page already finished loading (common when the
-// content script injects late), otherwise waits for the load event.
 function checkAndOfferAutofill() {
   const form = findLoginForm();
   if (!form) return;
@@ -130,20 +125,43 @@ function checkAndOfferAutofill() {
   if (!website) return;
 
   chrome.runtime.sendMessage({ type: "CHECK_CREDENTIAL_EXISTS", website }, (res) => {
+    if (chrome.runtime.lastError) return;
     if (res && res.exists) {
       createAutofillBanner(website);
     }
   });
 }
 
-console.log("Autofill check state:", document.readyState);
-if (document.readyState === "complete") {
-  console.log("Running checkAndOfferAutofill immediately");
-  checkAndOfferAutofill();
-} else {
-  console.log("Waiting for load event");
-  window.addEventListener("load", () => {
-    console.log("Load event fired, running checkAndOfferAutofill");
+/**
+ * CodeChef (and many modern sites) render their login form fields
+ * asynchronously via JS after the page's load event — Cloudflare's
+ * Rocket Loader defers script execution, so the password field may
+ * not exist in the DOM yet when `load` fires. Instead of trusting
+ * `load`, watch the DOM and check as soon as a password field
+ * actually appears. Stop watching once found or after a timeout.
+ */
+function waitForLoginFormThenCheck() {
+  // Fast path: field already present (e.g. content script injected late).
+  if (document.querySelector('input[type="password"]')) {
     checkAndOfferAutofill();
+    return;
+  }
+
+  const observer = new MutationObserver(() => {
+    if (document.querySelector('input[type="password"]')) {
+      observer.disconnect();
+      checkAndOfferAutofill();
+    }
   });
+
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+
+  // Safety net: stop watching after 10s so we don't run forever on
+  // pages that never get a password field.
+  setTimeout(() => observer.disconnect(), 10000);
 }
+
+waitForLoginFormThenCheck();

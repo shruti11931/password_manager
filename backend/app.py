@@ -29,7 +29,7 @@ app = Flask(__name__)
 EXTENSION_ORIGIN = os.getenv("EXTENSION_ORIGIN", "chrome-extension://REPLACE_WITH_EXTENSION_ID")
 CORS(app, origins=[EXTENSION_ORIGIN], supports_credentials=True)
 
-SESSION_TIMEOUT_SECONDS = 300  # auto-lock after 5 minutes of inactivity
+SESSION_TIMEOUT_SECONDS = 300  
 _session = {"token": None, "last_active": 0}
 
 
