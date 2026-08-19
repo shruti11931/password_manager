@@ -7,6 +7,7 @@ with every credential request. Vault auto-locks after inactivity.
 """
 
 import os
+import re
 import secrets
 import string
 import time
@@ -57,6 +58,41 @@ def _require_session():
         return jsonify({"error": "Session expired or invalid. Please unlock the vault."}), 401
     _touch_session()
     return None
+
+
+def is_valid_username(username: str):
+    """
+    Rejects empty, too short/long, gibberish (no vowels/digits), and
+    repeated-pattern usernames like "hjhjhjhjhj" or "aaaaaaaa".
+    Returns (is_valid: bool, error_message: str).
+    """
+    if not username or not isinstance(username, str):
+        return False, "Username is required."
+
+    username = username.strip()
+
+    if len(username) < 3:
+        return False, "Username must be at least 3 characters."
+    if len(username) > 32:
+        return False, "Username must be under 32 characters."
+
+    # Allow letters, numbers, and common username/email punctuation
+    if not re.match(r'^[A-Za-z0-9._%+@-]+$', username):
+        return False, "Username can only contain letters, numbers, and . _ % + @ -"
+
+    # Gibberish like "hjhjhjhjhj" has no vowels and no digits
+    if not re.search(r'[aeiouAEIOU]', username) and not re.search(r'[0-9]', username):
+        return False, "That doesn't look like a valid username."
+
+    # Catches a short chunk (1-3 chars) repeated back-to-back, e.g. "hjhjhjhjhj"
+    if re.match(r'^(.{1,3})\1{2,}$', username):
+        return False, "That looks like a repeated pattern, not a real username."
+
+    # Catches "aaaa" style runs
+    if re.search(r'(.)\1{3,}', username):
+        return False, "Too many repeated characters in a row."
+
+    return True, ""
 
 
 @app.route("/api/health", methods=["GET"])
@@ -150,6 +186,11 @@ def create_credential():
         return jsonify({"error": "Website is required."}), 400
     if not username:
         return jsonify({"error": "Username is required."}), 400
+
+    valid, message = is_valid_username(username)
+    if not valid:
+        return jsonify({"error": message}), 400
+
     if not password:
         return jsonify({"error": "Password is required."}), 400
 
@@ -164,10 +205,17 @@ def edit_credential(cred_id):
         return err
 
     data = request.get_json(silent=True) or {}
+    username = data.get("username")
+
+    if username is not None:
+        valid, message = is_valid_username(username)
+        if not valid:
+            return jsonify({"error": message}), 400
+
     success = update_credential(
         cred_id,
         website=data.get("website"),
-        username=data.get("username"),
+        username=username,
         plaintext_password=data.get("password"),
     )
     if not success:
